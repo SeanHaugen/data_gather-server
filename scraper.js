@@ -1,10 +1,11 @@
 const express = require('express');
 const puppeteer = require('puppeteer');
 const fs = require('fs');
+const cors = require('cors');
 
 const app = express();
-const port = 3000;
-
+const port = process.env.PORT || 4000;
+app.use(cors());
 app.use(express.json());
 
 const rawData = fs.readFileSync('./data.json');
@@ -39,7 +40,7 @@ async function performLogin(page) {
 }
 
 
-async function main() {
+async function scrapeData() {
   const browser = await puppeteer.launch();
   const page = await browser.newPage();
   page.setDefaultTimeout(90000);
@@ -105,4 +106,20 @@ async function main() {
 }
 
 
-main();
+// main();
+
+app.get('/scrape', async (req, res) => {
+  const scrapedData = await scrapeData();
+  if (scrapedData) {
+    const jsonData = JSON.stringify(scrapedData, null, 2);
+    const outputPath = './product-update.json';
+    fs.writeFileSync(outputPath, jsonData);
+    res.download(outputPath); // Send the JSON file as a download
+  } else {
+    res.status(500).send('Scraping failed');
+  }
+});
+
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
+});
